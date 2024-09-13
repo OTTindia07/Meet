@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up JR Panel",
+        "description": "Enter the details for your JR Panel device.",
+        "data": {
+          "host": "IP Address",
+          "name": "Device Name"
+        }
+      },
+      "discovery": {
+        "title": "Select JR Panel",
+        "description": "Select the JR Panel device you want to add.",
+        "data": {
+          "selected_panel": "Select Panel"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device. Please check the IP address and try again.",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "An unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This JR Panel device is already configured"
+    }
+  }
+}
