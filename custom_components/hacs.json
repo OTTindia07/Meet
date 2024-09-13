@@ -1,6 +1,0 @@
-{
-    "name": "JR Panel",
-    "render_readme": true,
-    "domains": ["light", "fan"],
-    "iot_class": "Local Polling"
-}
