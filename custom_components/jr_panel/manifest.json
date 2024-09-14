@@ -1,14 +1,13 @@
 {
   "domain": "jr_panel",
-  "name": "JR Panel",
+  "name": "JR Touch Panel",
   "config_flow": true,
   "documentation": "https://github.com/OTTindia07/Meet/",
   "requirements": [],
   "ssdp": [],
-  "zeroconf": [],
+  "zeroconf": ["_jrtouch._tcp.local."],
   "homekit": {},
   "dependencies": [],
-  "codeowners": ["@OTTindia07"],
-  "iot_class": "local_polling",
+  "codeowners": ["@Xusmaster01"],
   "version": "0.1.0"
 }
