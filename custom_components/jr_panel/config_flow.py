@@ -1,52 +1,50 @@
-"""Config flow for JR Panel integration."""
-from __future__ import annotations
+"""Config flow for JR Touch Panel integration."""
+import logging
+from typing import Any
 
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_NAME
+from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.data_entry_flow import FlowResult
 
-from .const import DOMAIN
+from .const import DEFAULT_PORT, DOMAIN
 from .discovery import discover_jr_panels
+from .jr_accessory import JRAccessory
+
+_LOGGER = logging.getLogger(__name__)
 
 class JRPanelConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for JR Panel."""
+    """Handle a config flow for JR Touch Panel."""
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
+    async def async_step_user(self, user_input=None):
         """Handle the initial step."""
-        if user_input is None:
-            discovered_panels = await discover_jr_panels()
-            if discovered_panels:
-                return await self.async_step_discovery()
-            return self.async_show_form(
-                step_id="user",
-                data_schema=vol.Schema({
-                    vol.Required(CONF_NAME): str,
+        errors = {}
+
+        if user_input is not None:
+            try:
+                accessory = JRAccessory(self.hass, user_input)
+                await accessory.connect()
+                return self.async_create_entry(title=user_input[CONF_NAME], data=user_input)
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "cannot_connect"
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
                     vol.Required(CONF_HOST): str,
-                }),
-            )
+                    vol.Required(CONF_NAME): str,
+                    vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
+                }
+            ),
+            errors=errors,
+        )
 
-        await self.async_set_unique_id(user_input[CONF_HOST])
-        self._abort_if_unique_id_configured()
-
-        return self.async_create_entry(title=user_input[CONF_NAME], data=user_input)
-
-    async def async_step_discovery(self, user_input=None) -> FlowResult:
-        """Handle discovery step."""
-        discovered_panels = await discover_jr_panels()
-        if user_input is None:
-            return self.async_show_form(
-                step_id="discovery",
-                data_schema=vol.Schema({
-                    vol.Required("selected_panel"): vol.In({panel["host"]: panel["name"] for panel in discovered_panels}),
-                }),
-            )
-
-        selected_panel = next(panel for panel in discovered_panels if panel["host"] == user_input["selected_panel"])
-        await self.async_set_unique_id(selected_panel["host"])
-        self._abort_if_unique_id_configured()
-
-        return self.async_create_entry(title=selected_panel["name"], data=selected_panel)
+    async def async_step_zeroconf(self, discovery_info):
+        """Handle zeroconf discovery."""
+        # Implement zeroconf discovery logic here
+        pass
