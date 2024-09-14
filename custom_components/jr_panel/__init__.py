@@ -1,26 +1,54 @@
-"""The JR Panel integration."""
-from __future__ import annotations
+"""The JR Touch Panel integration."""
+import asyncio
+import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 
-from .const import DOMAIN, PLATFORMS
-from .coordinator import JRPanelCoordinator
+from .const import DOMAIN
+from .jr_accessory import JRAccessory
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up JR Panel from a config entry."""
-    coordinator = JRPanelCoordinator(hass, entry)
-    await coordinator.async_config_entry_first_refresh()
+_LOGGER = logging.getLogger(__name__)
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+PLATFORMS = ["switch", "fan", "light", "cover"]
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up the JR Touch Panel component."""
+    hass.data.setdefault(DOMAIN, {})
+    return True
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up JR Touch Panel from a config entry."""
+    accessory = JRAccessory(hass, entry.data)
+
+    try:
+        await accessory.connect()
+    except Exception as err:
+        raise ConfigEntryNotReady from err
+
+    hass.data[DOMAIN][entry.entry_id] = accessory
+
+    for platform in PLATFORMS:
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(entry, platform)
+        )
 
     return True
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+            ]
+        )
+    )
+
+    if unload_ok:
+        accessory = hass.data[DOMAIN].pop(entry.entry_id)
+        await accessory.disconnect()
 
     return unload_ok
