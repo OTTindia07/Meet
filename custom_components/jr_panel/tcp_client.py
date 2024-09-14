@@ -1,63 +1,36 @@
-"""TCP client for JR Panel."""
+
+"""TCP client for JR Touch Panel."""
 import asyncio
 import json
-from typing import Any, Dict
+import logging
 
-class JRPanelTCPClient:
-    """TCP client for communicating with JR Panel."""
+_LOGGER = logging.getLogger(__name__)
 
-    def __init__(self, host: str, port: int = 4096):
-        """Initialize the client."""
+class TCPClient:
+    """TCP client for JR Touch Panel."""
+
+    def __init__(self, host, port):
+        """Initialize the TCP client."""
         self.host = host
-        self._port = port
-        self._reader = None
-        self._writer = None
+        self.port = port
+        self.reader = None
+        self.writer = None
 
-    async def _ensure_connected(self):
-        """Ensure connection to the JR Panel."""
-        if self._writer is None or self._writer.is_closing():
-            self._reader, self._writer = await asyncio.open_connection(self.host, self._port)
+    async def connect(self):
+        """Connect to the TCP server."""
+        self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
 
-    async def _send_command(self, command: Dict[str, Any]) -> Dict[str, Any]:
-        """Send a command to the JR Panel and return the response."""
-        await self._ensure_connected()
-        json_command = json.dumps(command) + "\r\n"
-        self._writer.write(json_command.encode())
-        await self._writer.drain()
+    async def disconnect(self):
+        """Disconnect from the TCP server."""
+        if self.writer:
+            self.writer.close()
+            await self.writer.wait_closed()
 
-        response = await self._reader.readline()
+    async def send_command(self, command):
+        """Send a command to the TCP server."""
+        if not self.writer:
+            await self.connect()
+        self.writer.write(json.dumps(command).encode() + b'\r\n')
+        await self.writer.drain()
+        response = await self.reader.readline()
         return json.loads(response.decode())
-
-    async def get_switch_state(self, switch_id: int) -> bool:
-        """Get the state of a switch."""
-        command = {"get": [{"dp_id": 107 + switch_id}]}
-        response = await self._send_command(command)
-        return response["report"][0]["value"]
-
-    async def set_switch(self, switch_id: int, state: bool):
-        """Set the state of a switch."""
-        command = {
-            "set": [{
-                "dp_id": 107 + switch_id,
-                "identifier": f"switch_{switch_id}",
-                "value": state
-            }]
-        }
-        await self._send_command(command)
-
-    async def get_fan_speed(self, fan_id: int) -> int:
-        """Get the speed of a fan."""
-        command = {"get": [{"dp_id": 117 + fan_id}]}
-        response = await self._send_command(command)
-        return response["report"][0]["value"]
-
-    async def set_fan(self, fan_id: int, speed: int):
-        """Set the speed of a fan."""
-        command = {
-            "set": [{
-                "dp_id": 117 + fan_id,
-                "identifier": f"fan_{fan_id}",
-                "value": speed
-            }]
-        }
-        await self._send_command(command)
