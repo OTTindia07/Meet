@@ -1,5 +1,5 @@
-"""Constants for the JR Panel integration."""
-DOMAIN = "jr_panel"
-PLATFORMS = ["switch", "fan"]
 
+"""Constants for the JR Touch Panel integration."""
+
+DOMAIN = "jr_panel"
 DEFAULT_PORT = 4096
